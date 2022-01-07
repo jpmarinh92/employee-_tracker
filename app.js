@@ -15,6 +15,8 @@ const start = () => {
       {name:"Add a department", value:"Adepartment"},
       {name:"Add a role", value:"Arole"},
       {name:"Add an employee", value:"Aemployee"},
+      {name:"Edit an employee", value:"Edit"},
+      {name:"Exit", value:"Exit"}
     ]
   }
 ])
@@ -31,10 +33,13 @@ const start = () => {
     addRole();
   } else if (start_action === 'Aemployee') {
     addEmployee();
+  } else if (start_action === 'Edit'){
+    editEmployee();
+  } else if(start_action === 'Exit'){
+    return;
   }
 })
 }
-
 
 
 const viewDepartments = () => {
@@ -58,7 +63,7 @@ const viewRoles = () => {
   fetch(queryUrl)
   .then(response => {
     if (!response.ok) {
-      return alert('Error: ' + response.statusText);
+      return console.log('Error: ' + response.statusText);
     }
     return response.json();
   })
@@ -74,7 +79,7 @@ const viewEmployees = () => {
   fetch(queryUrl)
   .then(response => {
     if (!response.ok) {
-      return alert('Error: ' + response.statusText);
+      return console.log('Error: ' + response.statusText);
     }
     return response.json();
   })
@@ -211,7 +216,8 @@ const addEmployee = () => {
     .then(employeesData => {
       let managers = [{name: 'None', value:"None"}];
       for (let i=0; i < employeesData.data.length; i ++){
-        managers.push({name:employeesData.data[i].first_name, value:employeesData.data[i].id})
+        let fullName = employeesData.data[i].first_name + " " +employeesData.data[i].last_name; 
+        managers.push({name: fullName, value:employeesData.data[i].id})
       }
       inquirer
       .prompt([{
@@ -240,7 +246,6 @@ const addEmployee = () => {
       .then(({first_name, last_name, role_id, manager_id}) =>{ 
     
         const employee = { first_name, last_name, role_id, manager_id };
-        console.log(employee)
         fetch('http://localhost:3001/api/employee', {
           method: 'POST',
           headers: {
@@ -261,6 +266,77 @@ const addEmployee = () => {
       })
     });
   });
+}
+
+const editEmployee = () => {
+
+  queryUrl = `http://localhost:3001/api/roles`;
+  fetch(queryUrl)
+  .then(response => {
+    if (!response.ok) {
+      return alert('Error: ' + response.statusText);
+    }
+    return response.json();
+  })
+  .then(rolesData => {
+    let roles = [];
+    for (let i=0; i < rolesData.data.length; i ++){
+      roles.push({name:rolesData.data[i].title, value:rolesData.data[i].id})
+    }
+
+    queryUrl = `http://localhost:3001/api/employees`;
+    fetch(queryUrl)
+    .then(response => {
+      if (!response.ok) {
+        return alert('Error: ' + response.statusText);
+      }
+      return response.json();
+    })
+    .then(employeesData => {
+      let employees = [];
+      for (let i=0; i < employeesData.data.length; i ++){
+        let employee_name = employeesData.data[i].first_name + " " + employeesData.data[i].last_name;
+        employees.push({name:employee_name , value:employeesData.data[i].id})
+      }
+      inquirer
+      .prompt([{
+        type: 'list',
+        name: 'employee_id',
+        message: "Which employee's role do you want to update?",
+        choices: employees
+        },
+        {
+          type: 'list',
+          name: 'role_id',
+          message: 'Which role do you want to assign to the selected employee?',
+          choices: roles
+        }
+      ])
+      .then(({employee_id, role_id}) =>{ 
+        const role = { role_id };
+        fetch(`http://localhost:3001/api/employee/${employee_id}`, {
+          method: 'PUT',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(role)
+        })
+          .then(response => {
+            if (response.ok) {
+              return response.json();
+            }
+          })
+          .then(postResponse => {
+            // console.log(postResponse);
+            start();
+          });
+      })
+    });
+  });
+
+
+
 }
 
 start();
